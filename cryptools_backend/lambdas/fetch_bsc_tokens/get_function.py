@@ -8,6 +8,8 @@ import pickle
 import pandas as pd
 from web3 import Web3, exceptions, middleware
 
+from cryptools_backend.lib.utils import http_method
+
 CSV_FILENAME = join(dirname(__file__), "../data", "new_bsc_tokens.csv")
 PICKLE_FILENAME = join(dirname(__file__), "new_bsc_tokens.pickle")
 MAX_STORED_TOKENS = 100
@@ -20,7 +22,7 @@ w3.middleware_onion.inject(middleware.ExtraDataToPOAMiddleware, layer=0)
 with open(join(dirname(__file__), "ERC20.json")) as f:
     abi = json.load(f)
 
-
+@http_method("GET")
 def fetch_bsc_tokens(
     n_blocks: int = 1,
     first_block: int = None,
