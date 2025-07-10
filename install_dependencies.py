@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import subprocess
 
@@ -88,7 +89,7 @@ for layer_name in os.listdir(LAYERS_DIR):
 
     # Install new dependencies into the python subfolder
     print(f"Installing dependencies for {layer_name}...")
-    subprocess.run(["pip", "install", "--no-user", "-r", requirements_file, "-t", python_folder], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "--no-user", "-r", requirements_file, "-t", python_folder], check=True)
 
     # Clean up unnecessary files in the python subfolder
     print(f"Cleaning up unnecessary files in {layer_name}...")

@@ -1,6 +1,6 @@
 import os
 import subprocess
-import importlib.util
+import ast
 
 from aws_cdk import (
     App, Stack,
@@ -20,13 +20,30 @@ class CryptoolsAPI(Stack):
         print("Installing dependencies...")
         subprocess.run(["python", "install_dependencies.py"], check=True)
 
-        # Define the API Gateway
-        api = apigateway.RestApi(self, "CryptoolsAPI")
+        # Define the API Gateway with CORS enabled
+        api = apigateway.RestApi(
+            self, 
+            "CryptoolsAPI",
+            default_cors_preflight_options=apigateway.CorsOptions(
+                allow_origins=apigateway.Cors.ALL_ORIGINS,
+                allow_methods=apigateway.Cors.ALL_METHODS,
+                allow_headers=[
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token",
+                    "Access-Control-Allow-Origin",
+                    "Access-Control-Allow-Methods",
+                    "Access-Control-Allow-Headers"
+                ]
+            )
+        )
 
-        existing_bucket = aws_s3.Bucket.from_bucket_name(self, "BannerBucket", "banner-s3-bucket")
+        existing_bucket = aws_s3.Bucket.from_bucket_name(self, "CacheBucket", "cryptools-cache")
 
-        bucket = existing_bucket if existing_bucket else aws_s3.Bucket(self, "BannerBucket",
-                                                                       bucket_name="banner-s3-bucket")
+        bucket = existing_bucket if existing_bucket else aws_s3.Bucket(self, "CacheBucket",
+                                                                       bucket_name="cryptools-cache")
 
         lambda_role = aws_iam.Role(
             self,
@@ -63,22 +80,36 @@ class CryptoolsAPI(Stack):
                         compatible_runtimes=[_lambda.Runtime.PYTHON_3_12],
                     )
 
-        def get_function_layers(handler_path):
-            """Get the required layers for a function by reading the decorator."""
+        def get_function_layers_from_ast(handler_path):
+            """Get the required layers for a function by parsing the AST without importing."""
             try:
-                # Import the module to read the decorator
-                spec = importlib.util.spec_from_file_location("handler_module", handler_path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+                with open(handler_path, 'r') as file:
+                    tree = ast.parse(file.read())
                 
-                # Look for lambda_handler function and check if it has layers attribute
-                if hasattr(module, 'lambda_handler'):
-                    handler_func = module.lambda_handler
-                    if hasattr(handler_func, 'layers'):
-                        return handler_func.layers
+                # Look for @layers decorator on lambda_handler function
+                for node in ast.walk(tree):
+                    if isinstance(node, ast.FunctionDef) and node.name == 'lambda_handler':
+                        for decorator in node.decorator_list:
+                            if isinstance(decorator, ast.Call):
+                                if isinstance(decorator.func, ast.Name) and decorator.func.id == 'layers':
+                                    # Extract the layers list from the decorator
+                                    if decorator.args and isinstance(decorator.args[0], ast.List):
+                                        return [elt.s if isinstance(elt, ast.Str) else elt.value for elt in decorator.args[0].elts]
+                                elif isinstance(decorator.func, ast.Attribute) and decorator.func.attr == 'layers':
+                                    # Handle @layers decorator from utils module
+                                    if decorator.args and isinstance(decorator.args[0], ast.List):
+                                        return [elt.s if isinstance(elt, ast.Str) else elt.value for elt in decorator.args[0].elts]
             except Exception as e:
-                print(f"Warning: Could not read layers for {handler_path}: {e}")
+                print(f"Warning: Could not parse layers for {handler_path}: {e}")
             return []
+
+        # Define layer requirements for each function (fallback if AST parsing fails)
+        function_layer_requirements = {
+            'tokens': ['requests'],
+            'banner': ['libs', 'requests'],
+            'fetch_bsc_tokens': ['libs'],
+            'news': ['requests'],
+        }
 
         # Find all Lambda handlers in the `lambdas/` folder
         lambdas_folder = os.path.join(current_path, 'lambdas')
@@ -91,8 +122,10 @@ class CryptoolsAPI(Stack):
                     handler_path = os.path.join(lambda_folder_path, handler_file)
 
                     if os.path.exists(handler_path):
-                        # Get the required layers for this function
-                        required_layers = get_function_layers(handler_path)
+                        # Try to get layers from AST parsing first, fallback to predefined requirements
+                        required_layers = get_function_layers_from_ast(handler_path)
+                        if not required_layers and subdir in function_layer_requirements:
+                            required_layers = function_layer_requirements[subdir]
                         
                         # Create the layers list for this function
                         function_layers = []
@@ -105,6 +138,18 @@ class CryptoolsAPI(Stack):
                         # Handler string for AWS Lambda
                         handler_str = f"lambdas.{subdir}.{http_method.lower()}_function.lambda_handler"
                         
+                        # Define environment variables for specific functions
+                        environment_vars = {}
+                        if subdir == 'news':
+                            # Get API token from environment or use a placeholder
+                            # In production, this should be set via AWS Systems Manager Parameter Store
+                            # or AWS Secrets Manager for better security
+                            api_token = os.environ.get('CRYPTOPANIC_API_TOKEN', '')
+                            if api_token:
+                                environment_vars['CRYPTOPANIC_API_TOKEN'] = api_token
+                            else:
+                                print("Warning: CRYPTOPANIC_API_TOKEN not set in environment. News function may fail.")
+                        
                         lambda_function = _lambda.Function(
                             self, f"cryptools_backend.lambdas.{subdir}{http_method}Lambda",
                             runtime=_lambda.Runtime.PYTHON_3_12,
@@ -112,6 +157,7 @@ class CryptoolsAPI(Stack):
                             code=_lambda.Code.from_asset('cryptools_backend'),
                             layers=function_layers if function_layers else None,
                             role=lambda_role,
+                            environment=environment_vars if environment_vars else None,
                         )
                         bucket.grant_read_write(lambda_function)
                         resource = api.root.get_resource(subdir) or api.root.add_resource(subdir)

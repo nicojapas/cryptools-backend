@@ -8,3 +8,7 @@ __pycache__
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+cryptools_backend/layers/libs/python
+cryptools_backend/layers/requests/python
+cryptools_backend/layers/web3/python
