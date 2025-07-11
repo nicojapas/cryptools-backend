@@ -16,6 +16,7 @@
   },
   "commands": {
     "deploy": [
+      "python scripts/lint.py",
       "python install_dependencies.py",
       "cdk deploy"
     ]

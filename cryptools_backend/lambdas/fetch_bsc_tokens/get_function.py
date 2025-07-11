@@ -1,4 +1,4 @@
-from ..bsc_service import BSCService
+from ..services.bsc_service import BSCService
 from ..utils import create_success_response, handle_api_errors
 
 

@@ -32,7 +32,7 @@ NEWS_CACHE_DURATION = 3600  # 1 hour for news
 
 # BSC configuration
 BSC_RPC_URL = "https://bsc-dataseed.binance.org/"
-MAX_STORED_TOKENS = 100
+MAX_STORED_TOKENS = 200
 
 # API limits and pagination
 DEFAULT_PAGE_SIZE = 50

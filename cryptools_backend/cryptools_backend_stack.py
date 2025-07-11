@@ -19,7 +19,7 @@ KLAYER_DEPENDENCIES = {
 FUNCTION_KLAYERS = {
     "tokens": ["requests"],
     "banner": ["requests", "pandas"],
-    "fetch_bsc_tokens": ["web3"],  # Use local web3 layer
+    "fetch_bsc_tokens": ["web3"],
     "news": ["requests"],
 }
 KLAYER_POLICY_ARNS = [
@@ -48,6 +48,7 @@ def get_environment_vars(subdir: str) -> dict:
 
 def get_function_layers(self, subdir: str, klayers_map: dict) -> list:
     """Return the appropriate Lambda layers for a given subdir."""
+    # Only attach the web3 layer to fetch_bsc_tokens
     if subdir == "fetch_bsc_tokens":
         layer_code = _lambda.Code.from_asset(
             "cryptools_backend/layers/web3",
@@ -56,7 +57,6 @@ def get_function_layers(self, subdir: str, klayers_map: dict) -> list:
                 command=["bash", "-c", "pip install web3 -t /asset-output/python"],
             ),
         )
-
         return [
             _lambda.LayerVersion(
                 self,
@@ -66,7 +66,13 @@ def get_function_layers(self, subdir: str, klayers_map: dict) -> list:
                 description="Web3 layer built using bundling",
             )
         ]
-    return [klayers_map[layer_name] for layer_name in FUNCTION_KLAYERS.get(subdir, [])]
+    # For all other functions, do not include web3 in the layers
+    non_web3_layers = [
+        klayers_map[layer_name]
+        for layer_name in FUNCTION_KLAYERS.get(subdir, [])
+        if layer_name != "web3"
+    ]
+    return non_web3_layers
 
 
 def create_lambda_function(

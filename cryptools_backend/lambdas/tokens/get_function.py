@@ -1,6 +1,6 @@
 from ..config import CACHE_DURATION, S3_BUCKET
 from ..s3_utils import get_cached_or_fetch
-from ..services import CoinGeckoService
+from ..services.coin_gecko_service import CoinGeckoService
 from ..utils import create_success_response, handle_http_errors
 
 

@@ -47,6 +47,26 @@ To add additional dependencies, for example other CDK libraries, just add
 them to your `setup.py` file and rerun the `pip install -r requirements.txt`
 command.
 
+## Deployment Requirements
+
+### Docker
+This project requires [Docker](https://www.docker.com/products/docker-desktop/) to be installed and running on your machine. Docker is used by AWS CDK to bundle Lambda layers and functions in a Linux environment, which matches the AWS Lambda runtime. If Docker is not running, deployment will fail with an error like `spawnSync docker ENOENT`.
+
+**Install Docker Desktop:**
+- [Download Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- Install and start Docker before running `cdk deploy`.
+
+### Python Dependencies for Lambda (web3)
+The AWS Lambda environment is Linux-based. To ensure compatibility, the `web3` library (and its dependencies) must be installed into a Lambda layer using a Linux environment. The deployment process uses Docker to do this automatically, so the resulting layer works correctly on AWS Lambda.
+
+**Why is this needed?**
+- If you install `web3` on Windows or Mac and upload it directly, it may not work on AWS Lambda due to binary incompatibilities.
+- Docker ensures the dependencies are built for the correct platform.
+
+**Summary:**
+- Make sure Docker is running before deploying.
+- The deployment process will automatically bundle `web3` in a Lambda layer using Docker for AWS compatibility.
+
 ## Useful commands
 
  * `cdk ls`          list all stacks in the app

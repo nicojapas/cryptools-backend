@@ -1,6 +1,6 @@
 from ..config import NEWS_CACHE_DURATION, S3_BUCKET
 from ..s3_utils import get_cached_or_fetch
-from ..services import NewsService
+from ..services.news_service import NewsService
 from ..utils import create_success_response, handle_http_errors
 
 

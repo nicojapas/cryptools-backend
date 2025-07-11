@@ -7,7 +7,8 @@ from typing import Any, Dict, List
 
 from web3 import Web3, exceptions, middleware
 
-from .config import BSC_RPC_URL, MAX_STORED_TOKENS
+from ..config import BSC_RPC_URL, MAX_STORED_TOKENS, S3_BUCKET, CACHE_DURATION
+from ..s3_utils import get_cached_or_fetch, S3CacheService
 
 # Define the contract ABI for ERC20 tokens
 ERC20_ABI = [
@@ -45,7 +46,7 @@ class BSCService:
 
     def get_recent_tokens(self, blocks_to_scan: int = 10) -> List[Dict[str, Any]]:
         """
-        Fetch recently created BSC tokens from the last N blocks.
+        Fetch recently created BSC tokens from the last N blocks, using S3 cache to avoid refetching known tokens.
 
         Args:
             blocks_to_scan: Number of recent blocks to scan (default: 10)
@@ -53,6 +54,12 @@ class BSCService:
         Returns:
             List of token information
         """
+        # S3 cache key for tokens
+        cache_key = "bsc_recent_tokens.json"
+        cache_service = S3CacheService(S3_BUCKET, CACHE_DURATION)
+        cached_tokens = cache_service.get_cached_data(cache_key) or []
+        cached_addresses = {t["contract_address"] for t in cached_tokens}
+
         new_tokens = []
         last_block = self.w3.eth.get_block_number()
         first_block = max(0, last_block - blocks_to_scan)
@@ -71,7 +78,7 @@ class BSCService:
                             receipt = self.w3.eth.get_transaction_receipt(tx["hash"])
                             contract_address = receipt["contractAddress"]
 
-                            if not contract_address:
+                            if not contract_address or contract_address in cached_addresses:
                                 continue
 
                             # Try to create contract object and call ERC20 functions
@@ -99,6 +106,7 @@ class BSCService:
                             }
 
                             new_tokens.append(token_info)
+                            cached_addresses.add(contract_address)
 
                         except (
                             exceptions.ContractLogicError,
@@ -116,13 +124,18 @@ class BSCService:
                 logging.error(f"Error scanning block {block_num}: {e}")
                 continue
 
-        # Remove duplicates based on contract address
+        # Combine new tokens with cached tokens, keeping only the most recent MAX_STORED_TOKENS
+        all_tokens = new_tokens + cached_tokens
+        # Remove duplicates based on contract address, keeping the most recent occurrence
         unique_tokens = []
         seen_addresses = set()
-
-        for token in new_tokens:
+        for token in all_tokens:
             if token["contract_address"] not in seen_addresses:
                 unique_tokens.append(token)
                 seen_addresses.add(token["contract_address"])
+        unique_tokens = unique_tokens[:MAX_STORED_TOKENS]
 
-        return unique_tokens[:MAX_STORED_TOKENS]
+        # Save updated cache
+        cache_service.save_data(cache_key, unique_tokens)
+
+        return unique_tokens
