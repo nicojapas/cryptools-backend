@@ -14,6 +14,12 @@
       "tests"
     ]
   },
+  "commands": {
+    "deploy": [
+      "python install_dependencies.py",
+      "cdk deploy"
+    ]
+  },
   "context": {
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,

@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "lambda:GetLayerVersion",
+      "Resource": [
+        "arn:aws:lambda:eu-west-1:770693421928:layer:klayers-p312-web3:1",
+        "arn:aws:lambda:eu-west-1:770693421928:layer:klayers-p312-numpy:1",
+        "arn:aws:lambda:eu-west-1:770693421928:layer:klayers-p312-requests:1",
+        "arn:aws:lambda:eu-west-1:770693421928:layer:klayers-p312-pandas:1"
+      ]
+    }
+  ]
+} 

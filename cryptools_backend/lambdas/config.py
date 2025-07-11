@@ -14,7 +14,7 @@ COINGECKO_DEFAULT_PARAMS = {
     "page": 1,
     "sparkline": "true",
     "price_change_percentage": "24h",
-    "locale": "en"
+    "locale": "en",
 }
 
 # CryptoPanic API configuration
@@ -23,9 +23,7 @@ CRYPTOPANIC_NEWS_ENDPOINT = f"{CRYPTOPANIC_API_BASE}/posts/"
 
 # HTTP request configuration
 REQUEST_TIMEOUT = 10
-REQUEST_HEADERS = {
-    "User-Agent": "CryptoTools-Backend/1.0"
-}
+REQUEST_HEADERS = {"User-Agent": "CryptoTools-Backend/1.0"}
 
 # S3 configuration
 S3_BUCKET = "cryptools-cache"
@@ -38,4 +36,4 @@ MAX_STORED_TOKENS = 100
 
 # API limits and pagination
 DEFAULT_PAGE_SIZE = 50
-MAX_PAGE_SIZE = 250 
+MAX_PAGE_SIZE = 250

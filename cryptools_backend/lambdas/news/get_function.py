@@ -1,10 +1,9 @@
-from ..utils import layers, handle_http_errors, create_success_response
-from ..services import NewsService
-from ..config import S3_BUCKET, NEWS_CACHE_DURATION
+from ..config import NEWS_CACHE_DURATION, S3_BUCKET
 from ..s3_utils import get_cached_or_fetch
+from ..services import NewsService
+from ..utils import create_success_response, handle_http_errors
 
 
-@layers(["requests"])
 @handle_http_errors
 def lambda_handler(event, context):
     """
@@ -16,14 +15,11 @@ def lambda_handler(event, context):
         bucket_name=S3_BUCKET,
         cache_key="crypto_news.json",
         fetch_function=NewsService.get_trending_news,
-        cache_duration=NEWS_CACHE_DURATION
+        cache_duration=NEWS_CACHE_DURATION,
     )
 
     return create_success_response(
         data=news_data,
         message="Cryptocurrency news retrieved successfully",
-        count=len(news_data)
+        count=len(news_data),
     )
-    
-    
-    

@@ -1,13 +1,13 @@
 import os
-import sys
 import shutil
 import subprocess
+import sys
 
 
 def get_installed_packages(layer_path):
     """Get a dictionary of installed packages and their versions."""
     result = subprocess.run(
-        ["pip", "list", "--format=freeze", "--path", layer_path],
+        [sys.executable, "-m", "pip", "list", "--format=freeze", "--path", layer_path],
         capture_output=True,
         text=True,
     )
@@ -46,6 +46,20 @@ def packages_are_up_to_date(installed_packages, required_packages):
 
 # Path to the layers directory
 LAYERS_DIR = os.path.join("cryptools_backend", "layers")
+
+# Ensure web3 requirements.txt exists and contains web3
+web3_layer_dir = os.path.join(LAYERS_DIR, "web3")
+web3_requirements = os.path.join(web3_layer_dir, "requirements.txt")
+if not os.path.exists(web3_layer_dir):
+    os.makedirs(web3_layer_dir)
+if not os.path.exists(web3_requirements):
+    with open(web3_requirements, "w") as f:
+        f.write("web3\n")
+else:
+    with open(web3_requirements, "r+") as f:
+        lines = [line.strip() for line in f.readlines()]
+        if not any(line.startswith("web3") for line in lines):
+            f.write("\nweb3\n")
 
 # Iterate through each subfolder in the layers directory
 for layer_name in os.listdir(LAYERS_DIR):
@@ -89,7 +103,25 @@ for layer_name in os.listdir(LAYERS_DIR):
 
     # Install new dependencies into the python subfolder
     print(f"Installing dependencies for {layer_name}...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "--no-user", "-r", requirements_file, "-t", python_folder], check=True)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--no-user",
+            "-r",
+            requirements_file,
+            "-t",
+            python_folder,
+        ],
+        check=True,
+    )
+
+    # Print contents of the python subfolder for debugging
+    print(f"Contents of {python_folder} after install:")
+    for item in os.listdir(python_folder):
+        print(f"  - {item}")
 
     # Clean up unnecessary files in the python subfolder
     print(f"Cleaning up unnecessary files in {layer_name}...")
@@ -101,4 +133,4 @@ for layer_name in os.listdir(LAYERS_DIR):
             if dir == "__pycache__":
                 shutil.rmtree(os.path.join(root, dir))
 
-print("Dependencies checked and installed successfully!")
+print("All Lambda layer dependencies are installed locally as required.")
