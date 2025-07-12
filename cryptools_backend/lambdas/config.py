@@ -29,6 +29,7 @@ REQUEST_HEADERS = {"User-Agent": "CryptoTools-Backend/1.0"}
 S3_BUCKET = "cryptools-cache"
 CACHE_DURATION = 60  # seconds (for banner/tokens)
 NEWS_CACHE_DURATION = 3600  # 1 hour for news
+BSC_CACHE_DURATION = 86400  # 24 hours for BSC tokens
 
 # BSC configuration
 BSC_RPC_URL = "https://bsc-dataseed.binance.org/"

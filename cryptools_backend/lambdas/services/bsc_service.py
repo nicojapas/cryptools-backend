@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 
 from web3 import Web3, exceptions, middleware
 
-from ..config import BSC_RPC_URL, MAX_STORED_TOKENS, S3_BUCKET, CACHE_DURATION
+from ..config import BSC_RPC_URL, MAX_STORED_TOKENS, S3_BUCKET, BSC_CACHE_DURATION
 from ..s3_utils import get_cached_or_fetch, S3CacheService
 
 # Define the contract ABI for ERC20 tokens
@@ -46,7 +46,7 @@ class BSCService:
 
     def get_recent_tokens(self, blocks_to_scan: int = 10) -> List[Dict[str, Any]]:
         """
-        Fetch recently created BSC tokens from the last N blocks, using S3 cache to avoid refetching known tokens.
+        Fetch recently created BSC tokens from the last N blocks, using S3 cache to avoid refetching known tokens and blocks.
 
         Args:
             blocks_to_scan: Number of recent blocks to scan (default: 10)
@@ -54,17 +54,22 @@ class BSCService:
         Returns:
             List of token information
         """
-        # S3 cache key for tokens
+        # S3 cache keys
         cache_key = "bsc_recent_tokens.json"
-        cache_service = S3CacheService(S3_BUCKET, CACHE_DURATION)
+        blocks_cache_key = "bsc_scanned_blocks.json"
+        cache_service = S3CacheService(S3_BUCKET, BSC_CACHE_DURATION)
         cached_tokens = cache_service.get_cached_data(cache_key) or []
         cached_addresses = {t["contract_address"] for t in cached_tokens}
+        scanned_blocks = set(cache_service.get_cached_data(blocks_cache_key) or [])
 
         new_tokens = []
         last_block = self.w3.eth.get_block_number()
         first_block = max(0, last_block - blocks_to_scan)
+        updated_blocks = set()
 
         for block_num in range(first_block, last_block + 1):
+            if block_num in scanned_blocks:
+                continue
             try:
                 print(f"Scanning block {block_num}")
 
@@ -120,22 +125,42 @@ class BSCService:
                             )
                             continue
 
+                # Mark this block as scanned, regardless of whether tokens were found
+                updated_blocks.add(block_num)
+
             except Exception as e:
                 logging.error(f"Error scanning block {block_num}: {e}")
+                # Still mark as scanned to avoid repeated errors
+                updated_blocks.add(block_num)
                 continue
 
         # Combine new tokens with cached tokens, keeping only the most recent MAX_STORED_TOKENS
         all_tokens = new_tokens + cached_tokens
-        # Remove duplicates based on contract address, keeping the most recent occurrence
+        # Remove duplicates based on contract address, keeping the most recent occurrence by block number
         unique_tokens = []
-        seen_addresses = set()
+        seen_addresses = {}
         for token in all_tokens:
-            if token["contract_address"] not in seen_addresses:
+            contract_address = token["contract_address"]
+            if contract_address not in seen_addresses:
                 unique_tokens.append(token)
-                seen_addresses.add(token["contract_address"])
+                seen_addresses[contract_address] = token
+            else:
+                # If we've seen this address before, keep the one with the higher block number
+                existing_token = seen_addresses[contract_address]
+                if token["block_number"] > existing_token["block_number"]:
+                    # Replace the existing token with the newer one
+                    unique_tokens.remove(existing_token)
+                    unique_tokens.append(token)
+                    seen_addresses[contract_address] = token
+        
+        # Sort by block number (most recent first) and limit to MAX_STORED_TOKENS
+        unique_tokens.sort(key=lambda x: x["block_number"], reverse=True)
         unique_tokens = unique_tokens[:MAX_STORED_TOKENS]
 
-        # Save updated cache
+        # Save updated caches
         cache_service.save_data(cache_key, unique_tokens)
+        # Merge and save scanned blocks
+        all_scanned_blocks = list(scanned_blocks.union(updated_blocks))
+        cache_service.save_data(blocks_cache_key, all_scanned_blocks)
 
         return unique_tokens

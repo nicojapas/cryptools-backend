@@ -8,12 +8,12 @@ def lambda_handler(event, context):
     Lambda handler for fetching recent BSC tokens.
 
     Query Parameters:
-        blocks: Number of recent blocks to scan (default: 10, max: 100)
+        blocks: Number of recent blocks to scan (default: 100, max: 100)
     """
     # Parse query parameters
     query_params = event.get("queryStringParameters", {}) or {}
     blocks_to_scan = min(
-        int(query_params.get("blocks", 10)), 100
+        int(query_params.get("blocks", 100)), 100
     )  # Limit to 100 blocks max
 
     # Initialize BSC service and fetch recent tokens

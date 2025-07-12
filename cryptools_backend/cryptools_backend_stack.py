@@ -5,6 +5,8 @@ from aws_cdk import aws_apigateway as apigateway
 from aws_cdk import aws_iam
 from aws_cdk import aws_lambda as _lambda
 from aws_cdk import aws_s3
+from aws_cdk import aws_events as events
+from aws_cdk import aws_events_targets as targets
 from cdk_klayers import Klayers
 
 # === Constants and Config ===
@@ -82,6 +84,11 @@ def create_lambda_function(
     handler_str = f"lambdas.{subdir}.{http_method.lower()}_function.lambda_handler"
     environment_vars = get_environment_vars(subdir)
     function_layers = get_function_layers(self, subdir, klayers_map)
+    # Set timeout to 60s for fetch_bsc_tokens GET, else default to 10s
+    if subdir == "fetch_bsc_tokens" and http_method.upper() == "GET":
+        lambda_timeout = Duration.seconds(60)
+    else:
+        lambda_timeout = Duration.seconds(10)
     lambda_function = _lambda.Function(
         self,
         f"cryptools_backend.lambdas.{subdir}{http_method}Lambda",
@@ -91,7 +98,7 @@ def create_lambda_function(
         layers=function_layers if function_layers else None,
         role=lambda_role,
         environment=environment_vars if environment_vars else None,
-        timeout=Duration.seconds(10),
+        timeout=lambda_timeout,
     )
     bucket.grant_read_write(lambda_function)
     return lambda_function
@@ -167,6 +174,7 @@ class CryptoolsAPI(Stack):
 
         # Discover and create Lambda functions
         lambdas_folder = os.path.join(current_path, "lambdas")
+        fetch_bsc_tokens_get_lambda = None
         for subdir in os.listdir(lambdas_folder):
             lambda_folder_path = os.path.join(lambdas_folder, subdir)
             if not os.path.isdir(lambda_folder_path):
@@ -186,6 +194,18 @@ class CryptoolsAPI(Stack):
                     bucket,
                 )
                 attach_lambda_to_api(api, subdir, http_method, lambda_function)
+                # Save reference to fetch_bsc_tokens GET Lambda
+                if subdir == "fetch_bsc_tokens" and http_method.upper() == "GET":
+                    fetch_bsc_tokens_get_lambda = lambda_function
+
+        # Add EventBridge rule to trigger fetch_bsc_tokens GET Lambda every 1.5 minutes
+        if fetch_bsc_tokens_get_lambda:
+            rule = events.Rule(
+                self,
+                "FetchBscTokensScheduleRule",
+                schedule=events.Schedule.rate(Duration.minutes(2)),
+            )
+            rule.add_target(targets.LambdaFunction(fetch_bsc_tokens_get_lambda))
 
 
 # App initialization

@@ -9,6 +9,16 @@ def fetch_tokens_data(per_page: int = 50, page: int = 1):
     return CoinGeckoService.get_top_coins(per_page=per_page, page=page)
 
 
+def fetch_top_gainers_data(limit: int = 20):
+    """Fetch top gainers data from CoinGecko API."""
+    return CoinGeckoService.get_top_gainers(limit=limit)
+
+
+def fetch_trending_coins_data():
+    """Fetch trending coins data from CoinGecko API."""
+    return CoinGeckoService.get_trending_coins()
+
+
 @handle_http_errors
 def lambda_handler(event, context):
     """
@@ -25,8 +35,10 @@ def lambda_handler(event, context):
 
     # Create cache key based on parameters to avoid cache conflicts
     cache_key = f"tokens_data_p{per_page}_page{page}.json"
+    gainers_cache_key = "top_gainers_data.json"
+    trending_coins_cache_key = "trending_coins_data.json"
 
-    # Get cached data or fetch new data
+    # Get cached data or fetch new data for regular tokens
     coins_data = get_cached_or_fetch(
         bucket_name=S3_BUCKET,
         cache_key=cache_key,
@@ -34,9 +46,32 @@ def lambda_handler(event, context):
         cache_duration=CACHE_DURATION,
     )
 
+    # Get cached data or fetch new data for top gainers
+    top_gainers_data = get_cached_or_fetch(
+        bucket_name=S3_BUCKET,
+        cache_key=gainers_cache_key,
+        fetch_function=lambda: fetch_top_gainers_data(20),
+        cache_duration=CACHE_DURATION,
+    )
+
+    # Get cached data or fetch new data for trending coins
+    trending_coins_data = get_cached_or_fetch(
+        bucket_name=S3_BUCKET,
+        cache_key=trending_coins_cache_key,
+        fetch_function=fetch_trending_coins_data,
+        cache_duration=CACHE_DURATION,
+    )
+
+    # Combine both datasets in the response
+    response_data = {
+        "biggestCoins": coins_data,
+        "topGainers": top_gainers_data,
+        "trendingCoins": trending_coins_data
+    }
+
     return create_success_response(
-        data=coins_data,
-        message=f"Successfully fetched {len(coins_data)} top coins",
+        data=response_data,
+        message=f"Successfully fetched {len(coins_data)} top coins and {len(top_gainers_data)} top gainers",
         count=len(coins_data),
         page=page,
         per_page=per_page,
