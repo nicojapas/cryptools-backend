@@ -24,6 +24,11 @@ def fetch_worst_losers_data(limit: int = 20):
     return CoinGeckoService.get_worst_losers(limit=limit)
 
 
+def fetch_banner_data():
+    """Fetch banner data from CoinGecko API."""
+    return CoinGeckoService.get_banner_data()
+
+
 @handle_http_errors
 def lambda_handler(event, context):
     """
@@ -43,6 +48,7 @@ def lambda_handler(event, context):
     gainers_cache_key = "top_gainers_data.json"
     trending_coins_cache_key = "trending_coins_data.json"
     losers_cache_key = "worst_losers_data.json"
+    banner_cache_key = "banner_data.json"
 
     # Get cached data or fetch new data for regular tokens
     coins_data = get_cached_or_fetch(
@@ -76,12 +82,21 @@ def lambda_handler(event, context):
         cache_duration=CACHE_DURATION,
     )
 
+    # Get cached data or fetch new data for banner
+    banner_data = get_cached_or_fetch(
+        bucket_name=S3_BUCKET,
+        cache_key=banner_cache_key,
+        fetch_function=fetch_banner_data,
+        cache_duration=CACHE_DURATION,
+    )
+
     # Combine both datasets in the response
     response_data = {
         "biggestCoins": coins_data,
         "topGainers": top_gainers_data,
         "trendingCoins": trending_coins_data,
-        "worstLosers": worst_losers_data
+        "worstLosers": worst_losers_data,
+        "banner": banner_data
     }
 
     return create_success_response(

@@ -197,3 +197,38 @@ class CoinGeckoService:
                 "large": coin.get("large", ""),
             })
         return trending
+
+    @staticmethod
+    def get_banner_data() -> List[Dict[str, Any]]:
+        """
+        Fetch banner data (top 20 coins by market cap) from CoinGecko API.
+
+        Returns:
+            List of formatted coin data for banner
+        """
+        params = COINGECKO_DEFAULT_PARAMS.copy()
+        params.update({"per_page": 20, "page": 1})  # Get top 20 for banner
+
+        response = requests.get(
+            COINGECKO_TOP_COINS_ENDPOINT,
+            params=params,
+            headers=REQUEST_HEADERS,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+
+        coins_data = response.json()
+
+        # Format data for banner
+        return [
+            {
+                "image": coin.get("image", ""),
+                "name": coin.get("name", ""),
+                "symbol": coin.get("symbol", "").upper(),
+                "price": str(coin.get("current_price", 0)),
+                "priceChangePercentage24H": coin.get("price_change_percentage_24h", 0),
+                "price_change_percentage_24h": coin.get("price_change_percentage_24h", 0),
+                "id": coin.get("id", ""),
+            }
+            for coin in coins_data
+        ]
