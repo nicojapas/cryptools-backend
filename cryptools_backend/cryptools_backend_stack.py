@@ -34,17 +34,31 @@ KLAYER_POLICY_ARNS = [
 current_path = os.path.dirname(os.path.relpath(__file__))
 
 
+def get_required_env_var(env_var_name: str, function_name: str) -> str:
+    """Get a required environment variable and return its value."""
+    value = os.environ.get(env_var_name, "")
+    if not value:
+        print(f"Warning: {env_var_name} not set in environment. {function_name} function may fail.")
+    return value
+
+
 def get_environment_vars(subdir: str) -> dict:
     """Return environment variables for a given Lambda subdir."""
     env = {}
-    if subdir == "news":
-        api_token = os.environ.get("CRYPTOPANIC_API_TOKEN", "")
-        if api_token:
-            env["CRYPTOPANIC_API_TOKEN"] = api_token
-        else:
-            print(
-                "Warning: CRYPTOPANIC_API_TOKEN not set in environment. News function may fail."
-            )
+    
+    # Define required environment variables for each Lambda function
+    required_env_vars = {
+        "news": [("CRYPTOPANIC_API_TOKEN", "News")],
+        "tokens": [("COINGECKO_API_TOKEN", "Tokens")],
+    }
+    
+    # Add environment variables for the specified subdir
+    if subdir in required_env_vars:
+        for env_var_name, function_name in required_env_vars[subdir]:
+            value = get_required_env_var(env_var_name, function_name)
+            if value:
+                env[env_var_name] = value
+    
     return env
 
 

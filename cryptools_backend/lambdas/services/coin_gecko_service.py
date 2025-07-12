@@ -5,6 +5,7 @@ Service for interacting with CoinGecko API.
 from typing import Any, Dict, List
 
 import requests
+import os
 
 from ..config import (COINGECKO_DEFAULT_PARAMS, COINGECKO_TOP_COINS_ENDPOINT,
                       REQUEST_HEADERS, REQUEST_TIMEOUT)
@@ -92,7 +93,7 @@ class CoinGeckoService:
     @staticmethod
     def get_top_gainers(limit: int = 20) -> List[Dict[str, Any]]:
         """
-        Fetch top gaining coins by 24h price change percentage from CoinGecko API.
+        Fetch top gaining coins by fetching 250 coins and sorting by price change percentage.
 
         Args:
             limit: Number of coins to fetch (default: 20)
@@ -100,13 +101,10 @@ class CoinGeckoService:
         Returns:
             List of formatted coin data for top gainers
         """
+        # Fetch 250 coins to get a good sample for sorting
         params = COINGECKO_DEFAULT_PARAMS.copy()
-        params.update({
-            "per_page": min(limit, 250),
-            "page": 1,
-            "order": "price_change_percentage_24h_desc"  # Sort by 24h gain descending
-        })
-
+        params.update({"per_page": 250, "page": 1})
+        
         response = requests.get(
             COINGECKO_TOP_COINS_ENDPOINT,
             params=params,
@@ -114,12 +112,19 @@ class CoinGeckoService:
             timeout=REQUEST_TIMEOUT,
         )
         response.raise_for_status()
-
+        
         coins_data = response.json()
-
-        # Format the data for frontend consumption
+        
+        # Sort by price change percentage (descending for gainers)
+        sorted_coins = sorted(
+            coins_data,
+            key=lambda x: x.get("price_change_percentage_24h", 0),
+            reverse=True
+        )
+        
+        # Take top gainers and format them
         formatted_gainers = []
-        for coin in coins_data:
+        for coin in sorted_coins[:limit]:
             formatted_coin = {
                 "id": coin.get("id", ""),
                 "symbol": coin.get("symbol", "").lower(),
@@ -135,7 +140,7 @@ class CoinGeckoService:
     @staticmethod
     def get_worst_losers(limit: int = 20) -> List[Dict[str, Any]]:
         """
-        Fetch worst losing coins by 24h price change percentage from CoinGecko API.
+        Fetch worst losing coins by fetching 250 coins and sorting by price change percentage.
 
         Args:
             limit: Number of coins to fetch (default: 20)
@@ -143,13 +148,10 @@ class CoinGeckoService:
         Returns:
             List of formatted coin data for worst losers
         """
+        # Fetch 250 coins to get a good sample for sorting
         params = COINGECKO_DEFAULT_PARAMS.copy()
-        params.update({
-            "per_page": min(limit, 250),
-            "page": 1,
-            "order": "price_change_percentage_24h_asc"  # Sort by 24h loss ascending
-        })
-
+        params.update({"per_page": 250, "page": 1})
+        
         response = requests.get(
             COINGECKO_TOP_COINS_ENDPOINT,
             params=params,
@@ -157,12 +159,19 @@ class CoinGeckoService:
             timeout=REQUEST_TIMEOUT,
         )
         response.raise_for_status()
-
+        
         coins_data = response.json()
-
-        # Format the data for frontend consumption
+        
+        # Sort by price change percentage (ascending for losers)
+        sorted_coins = sorted(
+            coins_data,
+            key=lambda x: x.get("price_change_percentage_24h", 0),
+            reverse=False
+        )
+        
+        # Take worst losers and format them
         formatted_losers = []
-        for coin in coins_data:
+        for coin in sorted_coins[:limit]:
             formatted_coin = {
                 "id": coin.get("id", ""),
                 "symbol": coin.get("symbol", "").lower(),
