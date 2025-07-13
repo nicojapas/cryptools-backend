@@ -80,7 +80,7 @@ class CoinGeckoService:
             ),
             "circulatingSupply": str(market_data.get("circulating_supply", 0)),
             "sparkline7D": [],  # Would need separate call for sparkline
-            "stable": market_data.get("price_change_percentage_24h", 0) < 1,
+            "stable": abs(market_data.get("price_change_percentage_24h", 0)) < 1,  # Consider stable if 24h change is within ±1%
             "wrapped": "wrapped" in coin_data.get("name", "").lower()
             or "w" in coin_data.get("symbol", "").lower(),
             "description": coin_data.get("description", {}).get("en", ""),

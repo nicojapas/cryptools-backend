@@ -130,8 +130,7 @@ def format_coin_data(coin: Dict[str, Any]) -> Dict[str, Any]:
             if coin.get("sparkline_in_7d")
             else []
         ),
-        "stable": coin.get("price_change_percentage_24h", 0)
-        < 1,  # Consider stable if 24h change < 1%
+        "stable": abs(coin.get("price_change_percentage_24h", 0)) < 1,  # Consider stable if 24h change is within ±1%
         "wrapped": "wrapped" in coin.get("name", "").lower()
         or "w" in coin.get("symbol", "").lower(),
     }

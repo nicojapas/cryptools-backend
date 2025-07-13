@@ -49,7 +49,7 @@ def get_environment_vars(subdir: str) -> dict:
     # Define required environment variables for each Lambda function
     required_env_vars = {
         "news": [("CRYPTOPANIC_API_TOKEN", "News")],
-        "tokens": [("COINGECKO_API_TOKEN", "Tokens")],
+        "tokens": [("COINGECKO_API_KEY", "Tokens")],
     }
     
     # Add environment variables for the specified subdir
@@ -132,22 +132,19 @@ class CryptoolsAPI(Stack):
     def __init__(self, scope: App, id: str, **kwargs) -> None:
         super().__init__(scope, id, **kwargs)
 
-        # API Gateway with CORS
+        # API Gateway with simple CORS
         api = apigateway.RestApi(
             self,
             "CryptoolsAPI",
             default_cors_preflight_options=apigateway.CorsOptions(
-                allow_origins=apigateway.Cors.ALL_ORIGINS,
-                allow_methods=apigateway.Cors.ALL_METHODS,
+                allow_origins=["*"],  # Allow all origins for simplicity
+                allow_methods=["GET", "POST", "OPTIONS"],
                 allow_headers=[
                     "Content-Type",
                     "X-Amz-Date",
                     "Authorization",
                     "X-Api-Key",
                     "X-Amz-Security-Token",
-                    "Access-Control-Allow-Origin",
-                    "Access-Control-Allow-Methods",
-                    "Access-Control-Allow-Headers",
                 ],
             ),
         )
@@ -185,7 +182,7 @@ class CryptoolsAPI(Stack):
         klayers_map = {
             dep: klayers.layer_version(self, dep) for dep in KLAYER_DEPENDENCIES
         }
-
+        
         # Discover and create Lambda functions
         lambdas_folder = os.path.join(current_path, "lambdas")
         fetch_bsc_tokens_get_lambda = None
@@ -212,7 +209,7 @@ class CryptoolsAPI(Stack):
                 if subdir == "fetch_bsc_tokens" and http_method.upper() == "GET":
                     fetch_bsc_tokens_get_lambda = lambda_function
 
-        # Add EventBridge rule to trigger fetch_bsc_tokens GET Lambda every 1.5 minutes
+        # Add EventBridge rule to trigger fetch_bsc_tokens GET Lambda every 2 minutes
         if fetch_bsc_tokens_get_lambda:
             rule = events.Rule(
                 self,

@@ -29,6 +29,39 @@ def fetch_banner_data():
     return CoinGeckoService.get_banner_data()
 
 
+def calculate_market_sentiment(coins_data):
+    """
+    Calculate market sentiment based on Bitcoin's 24h price change.
+    
+    Args:
+        coins_data: List of coin data from CoinGecko API
+        
+    Returns:
+        str: "bullish", "bearish", or "neutral"
+    """
+    # Find Bitcoin in the coins data
+    bitcoin = None
+    for coin in coins_data:
+        if coin.get("symbol", "").lower() == "btc" or coin.get("name", "").lower() == "bitcoin":
+            bitcoin = coin
+            break
+    
+    if not bitcoin:
+        # If Bitcoin not found, return neutral
+        return "neutral"
+    
+    # Get Bitcoin's 24h price change percentage
+    btc_24h_change = bitcoin.get("price_change_percentage_24h", 0)
+    
+    # Determine sentiment based on 24h change
+    if btc_24h_change > 1:
+        return "bullish"
+    elif btc_24h_change < -1:
+        return "bearish"
+    else:
+        return "neutral"
+
+
 @handle_http_errors
 def lambda_handler(event, context):
     """
@@ -90,13 +123,17 @@ def lambda_handler(event, context):
         cache_duration=CACHE_DURATION,
     )
 
+    # Calculate market sentiment based on Bitcoin's 24h price change
+    sentiment = calculate_market_sentiment(coins_data)
+
     # Combine both datasets in the response
     response_data = {
         "biggestCoins": coins_data,
         "topGainers": top_gainers_data,
         "trendingCoins": trending_coins_data,
         "worstLosers": worst_losers_data,
-        "banner": banner_data
+        "banner": banner_data,
+        "sentiment": sentiment
     }
 
     return create_success_response(
