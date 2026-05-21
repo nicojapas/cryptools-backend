@@ -1,6 +1,12 @@
 *.swp
 package-lock.json
 __pycache__
+
+# IDE
+.idea/
+
+# Local scripts
+source.bat
 .pytest_cache
 .venv
 *.egg-info
