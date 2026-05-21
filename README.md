@@ -1,78 +1,96 @@
+# Cryptools Backend
 
-# Welcome to your CDK Python project!
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![AWS CDK](https://img.shields.io/badge/AWS_CDK-2.175.0-FF9900?logo=amazonaws&logoColor=white)
+![AWS Lambda](https://img.shields.io/badge/AWS_Lambda-Serverless-FF9900?logo=awslambda&logoColor=white)
+![API Gateway](https://img.shields.io/badge/API_Gateway-REST-FF4F8B?logo=amazonapigateway&logoColor=white)
 
-This is a blank project for CDK development with Python.
+A serverless cryptocurrency data aggregation API built with AWS CDK. Provides endpoints for market data, news, and blockchain monitoring.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Features
 
-This project is set up like a standard Python project.  The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory.  To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
+- **Market Data** - Top coins, gainers, losers, trending tokens via CoinGecko API
+- **News Feed** - Trending crypto news from CryptoPanic
+- **BSC Token Monitor** - Detects newly deployed ERC20 tokens on Binance Smart Chain
+- **S3 Caching** - Reduces external API calls with configurable TTL
+- **Market Sentiment** - Calculates sentiment based on BTC price movement
 
-To manually create a virtualenv on MacOS and Linux:
+## API Endpoints
 
-```
-$ python -m venv .venv
-```
+| Endpoint | Description | Cache TTL |
+|----------|-------------|-----------|
+| `GET /tokens` | Market data, top coins, gainers/losers | 60s |
+| `GET /news` | Trending crypto news | 1 hour |
+| `GET /fetch_bsc_tokens` | Recently deployed BSC tokens | 24 hours |
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
-
-```
-$ source .venv/bin/activate
-```
-
-If you are a Windows platform, you would activate the virtualenv like this:
+## Architecture
 
 ```
-% .venv\Scripts\activate.bat
+API Gateway → Lambda Functions → External APIs (CoinGecko, CryptoPanic, BSC RPC)
+                    ↓
+              S3 Cache Bucket
 ```
 
-Once the virtualenv is activated, you can install the required dependencies.
+## Prerequisites
+
+- Python 3.12+
+- [Docker](https://www.docker.com/products/docker-desktop/) (required for Lambda layer bundling)
+- AWS CLI configured with appropriate credentials
+- Node.js (for AWS CDK CLI)
+
+## Setup
+
+1. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # Linux/Mac
+   # or
+   .venv\Scripts\activate.bat  # Windows
+   ```
+
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Set environment variables:
+   ```bash
+   export CRYPTOPANIC_API_TOKEN=your_token_here
+   ```
+
+## Deployment
+
+Make sure Docker is running, then:
+
+```bash
+cdk deploy
+```
+
+## Project Structure
 
 ```
-$ pip install -r requirements.txt
+cryptools-backend/
+├── app.py                          # CDK app entry point
+├── cryptools_backend_stack.py      # Infrastructure definition
+├── cryptools_backend/
+│   ├── lambdas/
+│   │   ├── config.py               # API configuration
+│   │   ├── utils.py                # Response formatting
+│   │   ├── s3_utils.py             # S3 caching service
+│   │   ├── tokens/                 # /tokens endpoint
+│   │   ├── news/                   # /news endpoint
+│   │   ├── fetch_bsc_tokens/       # /fetch_bsc_tokens endpoint
+│   │   └── services/               # External API integrations
+│   └── layers/                     # Lambda layers
+└── scripts/
+    └── lint.py                     # Code formatting
 ```
 
-At this point you can now synthesize the CloudFormation template for this code.
+## Useful Commands
 
-```
-$ cdk synth
-```
-
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
-
-## Deployment Requirements
-
-### Docker
-This project requires [Docker](https://www.docker.com/products/docker-desktop/) to be installed and running on your machine. Docker is used by AWS CDK to bundle Lambda layers and functions in a Linux environment, which matches the AWS Lambda runtime. If Docker is not running, deployment will fail with an error like `spawnSync docker ENOENT`.
-
-**Install Docker Desktop:**
-- [Download Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- Install and start Docker before running `cdk deploy`.
-
-### Python Dependencies for Lambda (web3)
-The AWS Lambda environment is Linux-based. To ensure compatibility, the `web3` library (and its dependencies) must be installed into a Lambda layer using a Linux environment. The deployment process uses Docker to do this automatically, so the resulting layer works correctly on AWS Lambda.
-
-**Why is this needed?**
-- If you install `web3` on Windows or Mac and upload it directly, it may not work on AWS Lambda due to binary incompatibilities.
-- Docker ensures the dependencies are built for the correct platform.
-
-**Summary:**
-- Make sure Docker is running before deploying.
-- The deployment process will automatically bundle `web3` in a Lambda layer using Docker for AWS compatibility.
-
-## Useful commands
-
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
-
-Enjoy!
+| Command | Description |
+|---------|-------------|
+| `cdk synth` | Synthesize CloudFormation template |
+| `cdk deploy` | Deploy stack to AWS |
+| `cdk diff` | Compare deployed stack with current state |
+| `python scripts/lint.py` | Format code with black, isort, ruff |
