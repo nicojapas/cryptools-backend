@@ -1,37 +1,5 @@
-// CryptoCompare API response types
-export interface CryptoCompareTopCoinsResponse {
-  Data: CryptoCompareCoinData[];
-}
+// Frontend response types for /tokens endpoint
 
-export interface CryptoCompareCoinData {
-  CoinInfo: {
-    Id: string;
-    Name: string;
-    FullName: string;
-    ImageUrl: string;
-  };
-  RAW?: {
-    USD: {
-      PRICE: number;
-      MKTCAP: number;
-      CHANGEPCT24HOUR: number;
-      CHANGE24HOUR: number;
-      SUPPLY: number;
-      VOLUME24HOUR: number;
-    };
-  };
-  DISPLAY?: {
-    USD: {
-      PRICE: string;
-      MKTCAP: string;
-      CHANGEPCT24HOUR: string;
-      CHANGE24HOUR: string;
-      SUPPLY: string;
-    };
-  };
-}
-
-// Frontend response types
 export interface BiggestCoin {
   image: string;
   name: string;
@@ -84,4 +52,8 @@ export interface TokensResponse {
   trendingCoins: TrendingCoin[];
   banner: BannerCoin[];
   sentiment: Sentiment;
-}
+}export const COINGECKO_HEADERS = {
+  accept: 'application/json',
+  'x-cg-demo-api-key': process.env.COINGECKO_API_KEY || '',
+};
+
