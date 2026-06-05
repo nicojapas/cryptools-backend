@@ -1,25 +1,8 @@
 {
-  "app": "python app.py",
+  "app": "npx ts-node bin/app.ts",
   "watch": {
-    "include": [
-      "**"
-    ],
-    "exclude": [
-      "README.md",
-      "cdk*.json",
-      "requirements*.txt",
-      "source.bat",
-      "**/__init__.py",
-      "**/__pycache__",
-      "tests"
-    ]
-  },
-  "commands": {
-    "deploy": [
-      "python scripts/lint.py",
-      "python install_dependencies.py",
-      "cdk deploy"
-    ]
+    "include": ["**/*.ts"],
+    "exclude": ["node_modules", "cdk.out", "dist", "test"]
   },
   "context": {
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
