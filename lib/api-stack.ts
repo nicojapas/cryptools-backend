@@ -81,6 +81,12 @@ export class ApiStack extends cdk.Stack {
       S3_BUCKET: bucket.bucketName,
     });
 
+    // Tokens endpoint (API key required)
+    this.addEndpoint('tokens', 'GET', lambdaRole, 15, true, {
+      COINGECKO_API_KEY: process.env.COINGECKO_API_KEY || '',
+      S3_BUCKET: bucket.bucketName,
+    });
+
     // Output the API key ID (retrieve actual key from AWS Console or CLI)
     new cdk.CfnOutput(this, 'ApiKeyId', {
       value: apiKey.keyId,

@@ -8,10 +8,17 @@ export const Config = {
     news: 'https://min-api.cryptocompare.com/data/v2/news/',
   },
 
+  // CoinGecko API
+  coingecko: {
+    topCoins: 'https://api.coingecko.com/api/v3/coins/markets',
+    trending: 'https://api.coingecko.com/api/v3/search/trending',
+  },
+
   // Cache durations (seconds)
   cache: {
     default: 60,
     news: 3600,
+    tokens: 300, // 5 minutes for token data
   },
 
   // Request settings
