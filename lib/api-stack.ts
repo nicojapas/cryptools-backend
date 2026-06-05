@@ -9,21 +9,49 @@ import * as path from 'path';
 
 const BUCKET_NAME = 'cryptools-cache';
 
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'https://nicojapas.github.io',
+];
+
 export class ApiStack extends cdk.Stack {
   public readonly api: apigateway.RestApi;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // API Gateway
+    // API Gateway with restricted CORS
     this.api = new apigateway.RestApi(this, 'CryptoolsApi', {
       restApiName: 'Cryptools API',
       defaultCorsPreflightOptions: {
-        allowOrigins: ['*'],
-        allowMethods: ['GET', 'POST', 'OPTIONS'],
-        allowHeaders: ['Content-Type', 'Authorization'],
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ['GET', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'X-Api-Key'],
+      },
+      apiKeySourceType: apigateway.ApiKeySourceType.HEADER,
+    });
+
+    // API Key
+    const apiKey = new apigateway.ApiKey(this, 'CryptoolsApiKey', {
+      apiKeyName: 'cryptools-api-key',
+      description: 'API key for Cryptools frontend',
+    });
+
+    // Usage Plan
+    const usagePlan = new apigateway.UsagePlan(this, 'CryptoolsUsagePlan', {
+      name: 'CryptoolsUsagePlan',
+      throttle: {
+        rateLimit: 100,
+        burstLimit: 200,
+      },
+      quota: {
+        limit: 10000,
+        period: apigateway.Period.DAY,
       },
     });
+
+    usagePlan.addApiKey(apiKey);
+    usagePlan.addApiStage({ stage: this.api.deploymentStage });
 
     // S3 bucket for caching
     const bucket = s3.Bucket.fromBucketName(this, 'CacheBucket', BUCKET_NAME);
@@ -43,8 +71,19 @@ export class ApiStack extends cdk.Stack {
       })
     );
 
-    // Health endpoint
-    this.addEndpoint('health', 'GET', lambdaRole, 5);
+    // Health endpoint (no API key required)
+    this.addEndpoint('health', 'GET', lambdaRole, 5, false);
+
+    // News endpoint (API key required)
+    this.addEndpoint('news', 'GET', lambdaRole, 10, true, {
+      CRYPTOCOMPARE_API_KEY: process.env.CRYPTOCOMPARE_API_KEY || '',
+    });
+
+    // Output the API key ID (retrieve actual key from AWS Console or CLI)
+    new cdk.CfnOutput(this, 'ApiKeyId', {
+      value: apiKey.keyId,
+      description: 'API Key ID - use AWS CLI to get the actual key value',
+    });
   }
 
   private addEndpoint(
@@ -52,6 +91,7 @@ export class ApiStack extends cdk.Stack {
     method: string,
     role: iam.Role,
     timeout: number = 10,
+    requireApiKey: boolean = true,
     environment?: Record<string, string>
   ): nodejs.NodejsFunction {
     const fn = new nodejs.NodejsFunction(this, `${name}Lambda`, {
@@ -68,7 +108,9 @@ export class ApiStack extends cdk.Stack {
     });
 
     const resource = this.api.root.addResource(name);
-    resource.addMethod(method, new apigateway.LambdaIntegration(fn));
+    resource.addMethod(method, new apigateway.LambdaIntegration(fn), {
+      apiKeyRequired: requireApiKey,
+    });
 
     return fn;
   }

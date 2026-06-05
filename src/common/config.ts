@@ -3,19 +3,21 @@ export const Config = {
   region: process.env.AWS_REGION || 'eu-west-1',
   s3Bucket: process.env.S3_BUCKET || 'cryptools-cache',
 
+  // CryptoCompare API
+  cryptocompare: {
+    news: 'https://min-api.cryptocompare.com/data/v2/news/',
+  },
+
   // Cache durations (seconds)
-  cacheDuration: 60,
-  newsCacheDuration: 3600,
-  bscCacheDuration: 86400,
+  cache: {
+    default: 60,
+    news: 3600,
+  },
 
-  // External APIs
-  coingeckoApiBase: 'https://api.coingecko.com/api/v3',
-  cryptopanicApiBase: 'https://cryptopanic.com/api/developer/v2',
-  bscRpcUrl: 'https://bsc-dataseed.binance.org/',
+  // Request settings
+  requestTimeout: 10000,
 
-  // Limits
+  // Pagination
   defaultPageSize: 50,
   maxPageSize: 250,
-  maxStoredTokens: 200,
-  requestTimeout: 10000,
 } as const;
