@@ -8,7 +8,6 @@ import { Construct } from 'constructs';
 import * as path from 'path';
 
 const ALLOWED_ORIGINS = [
-  'http://localhost:5173',
   'https://nicojapas.github.io',
 ];
 
