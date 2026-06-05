@@ -1,7 +1,7 @@
 export const Config = {
   // AWS
   region: process.env.AWS_REGION || 'eu-west-1',
-  s3Bucket: process.env.S3_BUCKET || 'cryptools-cache',
+  s3Bucket: process.env.S3_BUCKET!,
 
   // CryptoCompare API
   cryptocompare: {

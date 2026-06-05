@@ -7,8 +7,6 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
-const BUCKET_NAME = 'cryptools-cache';
-
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'https://nicojapas.github.io',
@@ -53,8 +51,11 @@ export class ApiStack extends cdk.Stack {
     usagePlan.addApiKey(apiKey);
     usagePlan.addApiStage({ stage: this.api.deploymentStage });
 
-    // S3 bucket for caching
-    const bucket = s3.Bucket.fromBucketName(this, 'CacheBucket', BUCKET_NAME);
+    // S3 bucket for caching (CDK auto-generates unique name)
+    const bucket = new s3.Bucket(this, 'CacheBucket', {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
 
     // Lambda execution role
     const lambdaRole = new iam.Role(this, 'LambdaRole', {
@@ -77,6 +78,7 @@ export class ApiStack extends cdk.Stack {
     // News endpoint (API key required)
     this.addEndpoint('news', 'GET', lambdaRole, 10, true, {
       CRYPTOCOMPARE_API_KEY: process.env.CRYPTOCOMPARE_API_KEY || '',
+      S3_BUCKET: bucket.bucketName,
     });
 
     // Output the API key ID (retrieve actual key from AWS Console or CLI)

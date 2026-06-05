@@ -1,6 +1,12 @@
 import { handler } from '../src/handlers/news';
 import { APIGatewayProxyEvent, Context } from 'aws-lambda';
 
+// Mock the cache module
+jest.mock('../src/common/cache', () => ({
+  getFromCache: jest.fn().mockResolvedValue(null),
+  saveToCache: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockEvent = {} as APIGatewayProxyEvent;
 const mockContext = {} as Context;
 
